@@ -1,4 +1,4 @@
-use dotenvy::{Error};
+use dotenvy::Error;
 use std::env;
 
 #[derive(Debug)]
