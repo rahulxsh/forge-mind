@@ -35,3 +35,34 @@ Current API:
 ```text
 GET /health
 ```
+
+
+## Worker Architecture
+
+                     Application
+                          |
+             +------------+------------+
+             |                         |
+             v                         v
+         Axum Server              Worker Pool
+             |                         |
+             |                    +----+----+
+             |                    |    |    |
+             v                    v    v    v
+        AppState                 W1   W2   W3 ... W10
+             |                         |
+             v                         |
+       mpsc::Sender                    |
+             |                         |
+             +--------> Channel <------+
+                                     
+                    CancellationToken
+                          |
+                          v
+                    Worker shutdown
+                          |
+                          v
+                     JoinHandles
+                          |
+                          v
+                    Clean shutdown
