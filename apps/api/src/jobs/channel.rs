@@ -1,8 +1,9 @@
 use tokio::sync::mpsc;
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct Job {
-    pub id: String,
+    pub id: Uuid,
 }
 
 pub struct JobChannel {

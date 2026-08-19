@@ -4,9 +4,9 @@ use tokio::select;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
-use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing::info;
+use crate::jobs::job::process_job;
 
 pub async fn create_worker_pool(
     pool_count: usize,
@@ -27,9 +27,13 @@ pub async fn create_worker_pool(
                     } => {
                         match job {
                             Some(j) => {
-                            info!("Worker ID:{}, JOB:{:?}",worker_id,j);
-                            sleep(std::time::Duration::from_secs(15)).await;
-                            info!("DONE: Worker ID:{}, JOB:{:?}",worker_id,j);
+                                tracing::info!(
+                                    worker_id,
+                                    job_id = j.id.to_string(),
+                                    "worker received job"
+                                );
+
+                                process_job(j).await;
                              },
                              None => {
                                 info!("Worker {} shutting down", worker_id);
