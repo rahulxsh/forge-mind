@@ -1,8 +1,17 @@
+mod error;
+mod handlers;
 mod jobs;
+mod models;
+mod repositories;
+mod routes;
+mod services;
 mod workers;
 
 use crate::jobs::channel::Job;
 use crate::jobs::job::start_job;
+use crate::repositories::documents::DocumentsRepository;
+use crate::routes::routes;
+use crate::services::documents::DocumentService;
 use crate::workers::worker::create_worker_pool;
 use anyhow::Result;
 use axum::Router;
@@ -18,6 +27,7 @@ use tracing::info;
 #[derive(Clone)]
 pub struct AppState {
     pub tx: mpsc::Sender<Job>,
+    pub document_service: Arc<DocumentService>,
 }
 
 #[tokio::main]
@@ -30,8 +40,15 @@ async fn main() -> Result<()> {
     let config: Config = load_config()?;
     info!("Config Loaded");
 
-    let state = AppState { tx: job_channel.tx };
+    let state = AppState {
+        tx: job_channel.tx,
+        document_service: Arc::new(DocumentService {
+            repository: DocumentsRepository,
+        }),
+    };
+
     let app: Router = Router::new()
+        .nest("/api/v1", routes())
         .route("/health", get(health))
         .route("/job", post(start_job))
         .with_state(state);

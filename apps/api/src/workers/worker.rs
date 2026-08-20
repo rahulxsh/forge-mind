@@ -1,4 +1,5 @@
 use crate::jobs::channel::Job;
+use crate::jobs::job::process_job;
 use std::sync::Arc;
 use tokio::select;
 use tokio::sync::Mutex;
@@ -6,7 +7,6 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 use tracing::info;
-use crate::jobs::job::process_job;
 
 pub async fn create_worker_pool(
     pool_count: usize,
