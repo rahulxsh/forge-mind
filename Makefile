@@ -21,7 +21,7 @@ build-d:
 	cargo build -p api
 
 build-r:
-	cargo build -p api --release -
+	cargo build -p api --release
 
 lint:
 	cargo clippy
