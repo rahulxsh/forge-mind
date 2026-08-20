@@ -1,3 +1,4 @@
+mod db;
 mod error;
 mod handlers;
 mod jobs;
@@ -7,6 +8,7 @@ mod routes;
 mod services;
 mod workers;
 
+use crate::db::connect_db;
 use crate::jobs::channel::Job;
 use crate::jobs::job::start_job;
 use crate::repositories::documents::DocumentsRepository;
@@ -32,18 +34,24 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let token = CancellationToken::new();
-    let token_cloned = token.clone();
-    let job_channel = JobChannel::new(2);
-    let pool_count: usize = 10;
     tracing_subscriber::fmt().init();
+
     let config: Config = load_config()?;
     info!("Config Loaded");
 
+    let pool = connect_db(&config.db_url).await?;
+
+    let token = CancellationToken::new();
+    let token_cloned = token.clone();
+
+    let job_channel = JobChannel::new(2);
+    let pool_count: usize = 10;
+
     let state = AppState {
-        tx: job_channel.tx,
+        tx: job_channel.tx.clone(),
         document_service: Arc::new(DocumentService {
-            repository: DocumentsRepository,
+            repository: DocumentsRepository { pool },
+            tx: job_channel.tx,
         }),
     };
 

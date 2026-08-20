@@ -5,6 +5,7 @@ use std::env;
 pub struct Config {
     pub port: String,
     pub host: String,
+    pub db_url: String,
 }
 
 pub fn load_config() -> Result<Config, Error> {
@@ -12,5 +13,7 @@ pub fn load_config() -> Result<Config, Error> {
 
     let host = env::var("HOST").expect("HOST is missing");
 
-    Ok(Config { port, host })
+    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is missing");
+
+    Ok(Config { port, host, db_url })
 }

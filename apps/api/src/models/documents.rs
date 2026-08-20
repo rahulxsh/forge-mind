@@ -23,7 +23,7 @@ pub struct DocumentResponse {
 
 pub struct Document {
     pub id: Uuid,
-    pub filename: String,
+    pub file_name: String,
     pub content_type: String,
     pub status: DocumentStatus,
 }
