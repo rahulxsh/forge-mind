@@ -21,6 +21,7 @@ pub struct DocumentResponse {
     pub content_type: String,
 }
 
+#[derive(Debug, sqlx::FromRow)]
 pub struct Document {
     pub id: Uuid,
     pub file_name: String,
@@ -28,6 +29,8 @@ pub struct Document {
     pub status: DocumentStatus,
 }
 
+#[derive(Debug, sqlx::Type)]
+#[sqlx(type_name = "document_status", rename_all = "lowercase")]
 pub enum DocumentStatus {
     Queued,
     Processing,

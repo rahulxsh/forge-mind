@@ -2,7 +2,7 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::{Error, PgPool};
 use tracing::info;
 
-pub async fn connect_db(url: &String) -> Result<PgPool, Error> {
+pub async fn connect_db(url: &str) -> Result<PgPool, Error> {
     let pool = PgPoolOptions::new()
         .min_connections(3)
         .max_connections(10)

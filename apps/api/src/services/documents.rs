@@ -3,6 +3,7 @@ use crate::jobs::channel::Job;
 use crate::models::documents::{DocumentDTO, DocumentRequest, DocumentResponse, DocumentStatus};
 use crate::repositories::documents::DocumentsRepository;
 use axum::http::StatusCode;
+use sqlx::Error;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -32,9 +33,15 @@ impl DocumentService {
             .repository
             .create(document_dto)
             .await
-            .map_err(|e| AppError {
-                message: e,
-                status_code: StatusCode::BAD_REQUEST,
+            .map_err(|e| match e {
+                Error::Database(_e) => AppError {
+                    message: "Internal Server Error".into(),
+                    status_code: StatusCode::BAD_REQUEST,
+                },
+                _ => AppError {
+                    message: e.to_string(),
+                    status_code: StatusCode::BAD_REQUEST,
+                },
             })?;
 
         let response_doc = DocumentResponse {
@@ -69,11 +76,18 @@ impl DocumentService {
             message: e.to_string(),
             status_code: StatusCode::INTERNAL_SERVER_ERROR,
         })?;
-        let doc = DocumentResponse {
-            id: document.id,
-            file_name: document.file_name,
-            content_type: document.content_type,
-        };
-        Ok(doc)
+        if let Some(document) = document {
+            let doc = DocumentResponse {
+                id: document.id,
+                file_name: document.file_name,
+                content_type: document.content_type,
+            };
+            Ok(doc)
+        } else {
+            Err(AppError {
+                message: "Not Found".into(),
+                status_code: StatusCode::NOT_FOUND,
+            })
+        }
     }
 }

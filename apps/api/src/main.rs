@@ -4,6 +4,7 @@ mod handlers;
 mod jobs;
 mod models;
 mod repositories;
+mod response;
 mod routes;
 mod services;
 mod workers;

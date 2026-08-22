@@ -7,48 +7,58 @@ pub struct DocumentsRepository {
 }
 
 impl DocumentsRepository {
-    pub async fn create(&self, data: DocumentDTO) -> Result<Document, String> {
-        Ok(Document {
-            id: data.id,
-            file_name: data.file_name,
-            content_type: data.content_type,
-            status: data.status,
-        })
+    pub async fn create(&self, data: DocumentDTO) -> Result<Document, sqlx::Error> {
+        let document = sqlx::query_as!(
+            Document,
+            r#"
+                INSERT INTO documents
+                    (id, file_name, content_type, status)
+                VALUES
+                    ($1, $2, $3, $4)
+                RETURNING
+                    id,
+                    file_name,
+                    content_type,
+                    status AS "status: DocumentStatus"
+            "#,
+            data.id,
+            data.file_name,
+            data.content_type,
+            data.status as DocumentStatus
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(document)
     }
 
-    pub async fn get(&self) -> Result<Vec<Document>, String> {
-        let docs = vec![
-            Document {
-                id: Uuid::new_v4(),
-                file_name: "hello.txt".into(),
-                content_type: "application/txt".into(),
-                status: DocumentStatus::Processing,
-            },
-            Document {
-                id: Uuid::new_v4(),
-                file_name: "github.pdf".into(),
-                content_type: "application/pdf".into(),
-                status: DocumentStatus::Failed,
-            },
-            Document {
-                id: Uuid::new_v4(),
-                file_name: "transactions.csv".into(),
-                content_type: "application/csv".into(),
-                status: DocumentStatus::Queued,
-            },
-        ];
+    pub async fn get(&self) -> Result<Vec<Document>, sqlx::Error> {
+        let documents = sqlx::query_as!(
+            Document,
+            r#"
+                SELECT id, file_name, content_type, status AS "status:DocumentStatus"
+                FROM documents
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
 
-        Ok(docs)
+        Ok(documents)
     }
 
-    pub async fn get_by_id(&self, id: Uuid) -> Result<Document, String> {
-        let d = Document {
-            id,
-            file_name: "transactions.csv".into(),
-            content_type: "application/csv".into(),
-            status: DocumentStatus::Queued,
-        };
+    pub async fn get_by_id(&self, id: Uuid) -> Result<Option<Document>, sqlx::Error> {
+        let document = sqlx::query_as!(
+            Document,
+            r#"
+                SELECT id, file_name, content_type, status AS "status:DocumentStatus"
+                FROM documents
+                WHERE id = $1
+            "#,
+            id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
 
-        Ok(d)
+        Ok(document)
     }
 }
