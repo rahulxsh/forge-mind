@@ -18,3 +18,4 @@ anyhow = "1.0.104"
 tokio-util = "0.7.19"
 uuid = { version = "1.24.1", features = ["v4","serde"]}
 validator = { version = "0.21.0", features = ["derive"]}
+tower = "0.5.3"

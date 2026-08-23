@@ -1,37 +1,16 @@
-mod db;
-mod error;
-mod handlers;
-mod jobs;
-mod models;
-mod repositories;
-mod response;
-mod routes;
-mod services;
-mod workers;
-
-use crate::db::connect_db;
-use crate::jobs::channel::Job;
-use crate::jobs::job::start_job;
-use crate::repositories::documents::DocumentsRepository;
-use crate::routes::routes;
-use crate::services::documents::DocumentService;
-use crate::workers::worker::create_worker_pool;
+use api::repositories::documents::DocumentsRepository;
+use api::services::documents::DocumentService;
+use api::workers::worker::create_worker_pool;
 use anyhow::Result;
-use axum::Router;
-use axum::routing::{get, post};
 use config::{Config, load_config};
-use jobs::channel::JobChannel;
+use api::jobs::channel::JobChannel;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::{Mutex};
 use tokio_util::sync::CancellationToken;
 use tracing::info;
-
-#[derive(Clone)]
-pub struct AppState {
-    pub tx: mpsc::Sender<Job>,
-    pub document_service: Arc<DocumentService>,
-}
+use api::{create_app, AppState};
+use api::db::connect_db;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -56,11 +35,7 @@ async fn main() -> Result<()> {
         }),
     };
 
-    let app: Router = Router::new()
-        .nest("/api/v1", routes())
-        .route("/health", get(health))
-        .route("/job", post(start_job))
-        .with_state(state);
+    let app = create_app(state);
 
     let worker_pool_handle = tokio::spawn(async move {
         let mut set = create_worker_pool(
@@ -97,8 +72,4 @@ async fn main() -> Result<()> {
     worker_pool_handle.await?;
 
     Ok(())
-}
-
-async fn health() -> &'static str {
-    "Health"
 }

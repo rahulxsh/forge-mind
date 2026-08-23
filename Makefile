@@ -39,10 +39,10 @@ clean:
 	cargo clean
 
 migrate-add:
-	sqlx migrate add $(name)
+	sqlx migrate add --source ./apps/api/migrations $(name)
 
 migrate-run:
-	sqlx migrate run
+	sqlx migrate run --source ./apps/api/migrations
 
 migrate-revert:
-	sqlx migrate revert
+	sqlx migrate revert --source ./apps/api/migrations

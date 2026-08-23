@@ -3,7 +3,6 @@ use crate::jobs::channel::Job;
 use crate::models::documents::{DocumentDTO, DocumentRequest, DocumentResponse, DocumentStatus};
 use crate::repositories::documents::DocumentsRepository;
 use axum::http::StatusCode;
-use sqlx::Error;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
