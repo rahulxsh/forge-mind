@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use validator::Validate;
 
 pub struct DocumentDTO {
     pub id: Uuid,
@@ -8,9 +9,12 @@ pub struct DocumentDTO {
     pub status: DocumentStatus,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct DocumentRequest {
+    #[validate(length(min = 1, message = "Invalid Filename"))]
     pub file_name: String,
+
+    #[validate(length(min = 1, message = "Invalid content type"))]
     pub content_type: String,
 }
 

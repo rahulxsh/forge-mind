@@ -6,12 +6,14 @@ use axum::Json;
 use axum::extract::Path;
 use axum::extract::State;
 use uuid::Uuid;
+use validator::Validate;
 
 #[axum::debug_handler]
 pub async fn add_document(
     State(state): State<AppState>,
     Json(payload): Json<DocumentRequest>,
 ) -> Result<Json<ApiResponse<DocumentResponse>>, AppError> {
+    payload.validate()?;
     let document = state.document_service.add_document(payload).await?;
     Ok(Json(ApiResponse::new("Document fetch success", document)))
 }

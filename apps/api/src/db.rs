@@ -1,15 +1,9 @@
-use sqlx::postgres::PgPoolOptions;
+use database::postgresql_client;
 use sqlx::{Error, PgPool};
 use tracing::info;
 
 pub async fn connect_db(url: &str) -> Result<PgPool, Error> {
-    let pool = PgPoolOptions::new()
-        .min_connections(3)
-        .max_connections(10)
-        .acquire_timeout(std::time::Duration::from_secs(5))
-        .connect(url)
-        .await?;
-
+    let pool = postgresql_client(url).await?;
     info!("DB Connected :)");
     Ok(pool)
 }
