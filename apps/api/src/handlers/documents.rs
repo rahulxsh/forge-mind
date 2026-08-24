@@ -15,7 +15,7 @@ pub async fn add_document(
 ) -> Result<Json<ApiResponse<DocumentResponse>>, AppError> {
     payload.validate()?;
     let document = state.document_service.add_document(payload).await?;
-    Ok(Json(ApiResponse::new("Document fetch success", document)))
+    Ok(Json(ApiResponse::new("Document created successfully", document)))
 }
 
 pub async fn get_documents(

@@ -68,5 +68,46 @@ async fn create_document() {
         .await
         .unwrap();
 
-    assert_eq!(response.status(),StatusCode::OK)
+    assert_eq!(response.status(),StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(),usize::MAX)
+        .await
+        .unwrap();
+
+    let body:serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(body["message"],"Document created successfully");
+    assert_eq!(body["success"],true);
+}
+
+
+#[tokio::test]
+async fn create_invalid_document() {
+    let (app,_job_channel) = test_app().await;
+
+    let body = serde_json::json!({
+        "file_name": "",
+        "content_type": "application/pdf"
+    });
+
+    let request = Request::post("/api/v1/documents")
+        .header("content-type","application/json")
+        .body(Body::from(body.to_string()))
+        .unwrap();
+
+    let response = app.oneshot(request)
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(),StatusCode::BAD_REQUEST);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+
+    let body: serde_json::Value =
+        serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(body["success"],false);
+    assert_eq!(body["message"],"Validation failed");
+    assert!(body["errors"].is_array())
 }
