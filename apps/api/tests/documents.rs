@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::{body::Body, http::{Request}, Router};
+use axum::{body::Body, http::{Request}, Router, body};
 use axum::http::StatusCode;
 use tower::ServiceExt;
 
@@ -13,6 +13,7 @@ use api::{
 };
 
 use sqlx::PgPool;
+use uuid::Uuid;
 use config::load_config;
 
 async fn test_pool() -> PgPool {
@@ -110,4 +111,103 @@ async fn create_invalid_document() {
     assert_eq!(body["success"],false);
     assert_eq!(body["message"],"Validation failed");
     assert!(body["errors"].is_array())
+}
+
+#[tokio::test]
+async fn get_documents() {
+    let (app,_job_channel) = test_app().await;
+
+    let request = Request::get("/api/v1/documents")
+        .body(Body::empty())
+        .unwrap();
+
+    let response = app.oneshot(request)
+        .await
+        .unwrap();
+    assert_eq!(response.status(),StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+
+    let body:serde_json::Value = serde_json::from_slice(&body)
+        .unwrap();
+
+    assert_eq!(body["message"],"Documents fetched successfully");
+    assert!(body["data"].is_array());
+}
+
+#[tokio::test]
+async fn get_document_by_id() {
+    let (app,_job_channel) = test_app().await;
+
+    let body = serde_json::json!({
+        "file_name": "test.pdf",
+        "content_type": "application/pdf"
+    });
+
+    let request = Request::post("/api/v1/documents")
+        .header("content-type","application/json")
+        .body(Body::from(body.to_string()))
+        .unwrap();
+
+    let response = app.clone().oneshot(request)
+        .await
+        .unwrap();
+
+    let body = axum::body::to_bytes(response.into_body(),usize::MAX)
+        .await
+        .unwrap();
+
+    let body:serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    let id = body["data"]["id"]
+        .as_str()
+        .unwrap();
+
+    let request = Request::get(format!("/api/v1/documents/{id}"))
+        .body(Body::empty())
+        .unwrap();
+
+    let response = app.oneshot(request)
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(),StatusCode::OK);
+
+    let body = body::to_bytes(response.into_body(),usize::MAX)
+        .await
+        .unwrap();
+
+    let body:serde_json::Value = serde_json::from_slice(&body)
+        .unwrap();
+
+    assert_eq!(body["message"],"Document fetch success");
+    assert_eq!(body["data"]["id"],id);
+}
+
+#[tokio::test]
+async fn get_missing_document() {
+    let (app,_job_channel) = test_app().await;
+
+    let id = Uuid::new_v4();
+
+    let request = Request::get(format!("/api/v1/documents/{id}"))
+        .body(Body::empty())
+        .unwrap();
+
+    let response = app.oneshot(request)
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(),StatusCode::NOT_FOUND);
+
+    let body = body::to_bytes(response.into_body(),usize::MAX)
+        .await
+        .unwrap();
+
+    let body:serde_json::Value = serde_json::from_slice(&body)
+        .unwrap();
+
+    assert_eq!(body["message"],"Document not found");
 }

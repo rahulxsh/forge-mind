@@ -46,7 +46,7 @@ pub async fn create_worker_pool(
                         info!("WORKER:{} Shutting Down",worker_id);
                         break;
                     }
-                };
+                }
             }
         });
     }
