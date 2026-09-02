@@ -1,20 +1,17 @@
 use std::sync::Arc;
 
-use axum::{body::Body, http::{Request}, Router, body};
 use axum::http::StatusCode;
+use axum::{Router, body, body::Body, http::Request};
 use tower::ServiceExt;
 
 use api::{
-    AppState,
-    create_app,
-    jobs::channel::JobChannel,
-    repositories::documents::DocumentsRepository,
+    AppState, create_app, jobs::channel::JobChannel, repositories::documents::DocumentsRepository,
     services::documents::DocumentService,
 };
 
+use config::load_config;
 use sqlx::PgPool;
 use uuid::Uuid;
-use config::load_config;
 
 async fn test_pool() -> PgPool {
     let config = load_config().unwrap();
@@ -31,7 +28,7 @@ async fn test_pool() -> PgPool {
     pool
 }
 
-async fn test_app() -> (Router,JobChannel) {
+async fn test_app() -> (Router, JobChannel) {
     let pool = test_pool().await;
 
     let job_channel = JobChannel::new(2);
@@ -39,156 +36,190 @@ async fn test_app() -> (Router,JobChannel) {
     let state = AppState {
         tx: job_channel.tx.clone(),
         document_service: Arc::new(DocumentService {
-            repository: DocumentsRepository {
-                pool,
-            },
+            repository: DocumentsRepository { pool },
             tx: job_channel.tx.clone(),
         }),
     };
 
-   let app =  create_app(state);
+    let app = create_app(state);
 
-    (app,job_channel)
+    (app, job_channel)
 }
 
 #[tokio::test]
 async fn create_document() {
-    let (app,_job_channel) = test_app().await;
+    let (app, _job_channel) = test_app().await;
 
-    let body = serde_json::json!({
-        "file_name": "test.pdf",
-        "content_type": "application/pdf"
-    });
+    let file = tokio::fs::read("tests/fixtures/test.md").await.unwrap();
+
+    let boundary = "----forge-mind-test-boundary";
+
+    let mut body = Vec::new();
+
+    body.extend_from_slice(
+        format!(
+            "--{boundary}\r\n\
+         Content-Disposition: form-data; name=\"file\"; filename=\"test.md\"\r\n\
+         Content-Type: text/markdown\r\n\
+         \r\n"
+        )
+        .as_bytes(),
+    );
+
+    body.extend_from_slice(&file);
+
+    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
 
     let request = Request::post("/api/v1/documents")
-        .header("content-type","application/json")
-        .body(Body::from(body.to_string()))
+        .header(
+            "content-type",
+            format!("multipart/form-data; boundary={boundary}"),
+        )
+        .body(Body::from(body))
         .unwrap();
 
-    let response = app.oneshot(request)
+    let response = app.oneshot(request).await.unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
 
-    assert_eq!(response.status(),StatusCode::OK);
-    let body = axum::body::to_bytes(response.into_body(),usize::MAX)
-        .await
-        .unwrap();
+    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    let body:serde_json::Value = serde_json::from_slice(&body).unwrap();
-
-    assert_eq!(body["message"],"Document created successfully");
-    assert_eq!(body["success"],true);
+    assert_eq!(body["message"], "Document created successfully");
+    assert_eq!(body["success"], true);
 }
-
 
 #[tokio::test]
 async fn create_invalid_document() {
-    let (app,_job_channel) = test_app().await;
+    let (app, _job_channel) = test_app().await;
 
-    let body = serde_json::json!({
-        "file_name": "",
-        "content_type": "application/pdf"
-    });
+    let file = tokio::fs::read("tests/fixtures/test.txt").await.unwrap();
+
+    let boundary = "----forge-mind-test-boundary";
+
+    let mut body = Vec::new();
+
+    body.extend_from_slice(
+        format!(
+            "--{boundary}\r\n\
+         Content-Disposition: form-data; name=\"file\"; filename=\"test.txt\"\r\n\
+         Content-Type: text/markdown\r\n\
+         \r\n"
+        )
+        .as_bytes(),
+    );
+
+    body.extend_from_slice(&file);
+
+    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
 
     let request = Request::post("/api/v1/documents")
-        .header("content-type","application/json")
-        .body(Body::from(body.to_string()))
+        .header(
+            "content-type",
+            format!("multipart/form-data; boundary={boundary}"),
+        )
+        .body(Body::from(body))
         .unwrap();
 
-    let response = app.oneshot(request)
-        .await
-        .unwrap();
+    let response = app.oneshot(request).await.unwrap();
 
-    assert_eq!(response.status(),StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
 
-    let body: serde_json::Value =
-        serde_json::from_slice(&body).unwrap();
+    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    assert_eq!(body["success"],false);
-    assert_eq!(body["message"],"Validation failed");
-    assert!(body["errors"].is_array())
+    assert_eq!(body["success"], false);
 }
 
 #[tokio::test]
 async fn get_documents() {
-    let (app,_job_channel) = test_app().await;
+    let (app, _job_channel) = test_app().await;
 
     let request = Request::get("/api/v1/documents")
         .body(Body::empty())
         .unwrap();
 
-    let response = app.oneshot(request)
-        .await
-        .unwrap();
-    assert_eq!(response.status(),StatusCode::OK);
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
 
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
 
-    let body:serde_json::Value = serde_json::from_slice(&body)
-        .unwrap();
+    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    assert_eq!(body["message"],"Documents fetched successfully");
+    assert_eq!(body["message"], "Documents fetched successfully");
     assert!(body["data"].is_array());
 }
 
 #[tokio::test]
 async fn get_document_by_id() {
-    let (app,_job_channel) = test_app().await;
+    let (app, _job_channel) = test_app().await;
 
-    let body = serde_json::json!({
-        "file_name": "test.pdf",
-        "content_type": "application/pdf"
-    });
+    let file = tokio::fs::read("tests/fixtures/test.md").await.unwrap();
+
+    let boundary = "----forge-mind-test-boundary";
+
+    let mut body = Vec::new();
+
+    body.extend_from_slice(
+        format!(
+            "--{boundary}\r\n\
+         Content-Disposition: form-data; name=\"file\"; filename=\"test.md\"\r\n\
+         Content-Type: text/markdown\r\n\
+         \r\n"
+        )
+        .as_bytes(),
+    );
+
+    body.extend_from_slice(&file);
+
+    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
 
     let request = Request::post("/api/v1/documents")
-        .header("content-type","application/json")
-        .body(Body::from(body.to_string()))
+        .header(
+            "content-type",
+            format!("multipart/form-data; boundary={boundary}"),
+        )
+        .body(Body::from(body))
         .unwrap();
 
-    let response = app.clone().oneshot(request)
+    let response = app.clone().oneshot(request).await.unwrap();
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
 
-    let body = axum::body::to_bytes(response.into_body(),usize::MAX)
-        .await
-        .unwrap();
+    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    let body:serde_json::Value = serde_json::from_slice(&body).unwrap();
-
-    let id = body["data"]["id"]
-        .as_str()
-        .unwrap();
+    let id = body["data"]["id"].as_str().unwrap();
 
     let request = Request::get(format!("/api/v1/documents/{id}"))
         .body(Body::empty())
         .unwrap();
 
-    let response = app.oneshot(request)
+    let response = app.oneshot(request).await.unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
 
-    assert_eq!(response.status(),StatusCode::OK);
+    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    let body = body::to_bytes(response.into_body(),usize::MAX)
-        .await
-        .unwrap();
-
-    let body:serde_json::Value = serde_json::from_slice(&body)
-        .unwrap();
-
-    assert_eq!(body["message"],"Document fetch success");
-    assert_eq!(body["data"]["id"],id);
+    assert_eq!(body["message"], "Document fetch success");
+    assert_eq!(body["data"]["id"], id);
 }
 
 #[tokio::test]
 async fn get_missing_document() {
-    let (app,_job_channel) = test_app().await;
+    let (app, _job_channel) = test_app().await;
 
     let id = Uuid::new_v4();
 
@@ -196,18 +227,15 @@ async fn get_missing_document() {
         .body(Body::empty())
         .unwrap();
 
-    let response = app.oneshot(request)
+    let response = app.oneshot(request).await.unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+    let body = body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
 
-    assert_eq!(response.status(),StatusCode::NOT_FOUND);
+    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    let body = body::to_bytes(response.into_body(),usize::MAX)
-        .await
-        .unwrap();
-
-    let body:serde_json::Value = serde_json::from_slice(&body)
-        .unwrap();
-
-    assert_eq!(body["message"],"Document not found");
+    assert_eq!(body["message"], "Document not found");
 }

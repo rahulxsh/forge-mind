@@ -1,20 +1,23 @@
+use anyhow::Result;
+use api::db::connect_db;
+use api::jobs::channel::JobChannel;
 use api::repositories::documents::DocumentsRepository;
 use api::services::documents::DocumentService;
 use api::workers::worker::create_worker_pool;
-use anyhow::Result;
+use api::{AppState, create_app};
 use config::{Config, load_config};
-use api::jobs::channel::JobChannel;
 use std::sync::Arc;
+use tokio::fs::create_dir_all;
 use tokio::net::TcpListener;
-use tokio::sync::{Mutex};
+use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use tracing::info;
-use api::{create_app, AppState};
-use api::db::connect_db;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt().init();
+
+    create_dir_all("./apps/api/uploads").await?;
 
     let config: Config = load_config()?;
     info!("Config Loaded");

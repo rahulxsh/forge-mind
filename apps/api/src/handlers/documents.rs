@@ -1,21 +1,22 @@
 use crate::AppState;
 use crate::error::AppError;
-use crate::models::documents::{DocumentRequest, DocumentResponse};
+use crate::models::documents::DocumentResponse;
 use crate::response::ApiResponse;
 use axum::Json;
-use axum::extract::Path;
 use axum::extract::State;
+use axum::extract::{Multipart, Path};
 use uuid::Uuid;
-use validator::Validate;
 
 #[axum::debug_handler]
 pub async fn add_document(
     State(state): State<AppState>,
-    Json(payload): Json<DocumentRequest>,
+    multipart: Multipart,
 ) -> Result<Json<ApiResponse<DocumentResponse>>, AppError> {
-    payload.validate()?;
-    let document = state.document_service.add_document(payload).await?;
-    Ok(Json(ApiResponse::new("Document created successfully", document)))
+    let document = state.document_service.add_document(multipart).await?;
+    Ok(Json(ApiResponse::new(
+        "Document created successfully",
+        document,
+    )))
 }
 
 pub async fn get_documents(

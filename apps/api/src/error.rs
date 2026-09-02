@@ -61,7 +61,6 @@ impl From<ValidationErrors> for AppError {
     }
 }
 
-
 impl From<sqlx::Error> for AppError {
     fn from(error: Error) -> Self {
         tracing::error!(error = ?error, "Database error");

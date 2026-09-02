@@ -12,9 +12,9 @@ impl DocumentsRepository {
             Document,
             r#"
                 INSERT INTO documents
-                    (id, file_name, content_type, status)
+                    (id, file_name, content_type, status, path)
                 VALUES
-                    ($1, $2, $3, $4)
+                    ($1, $2, $3, $4, $5)
                 RETURNING
                     id,
                     file_name,
@@ -24,7 +24,8 @@ impl DocumentsRepository {
             data.id,
             data.file_name,
             data.content_type,
-            data.status as DocumentStatus
+            data.status as DocumentStatus,
+            data.path
         )
         .fetch_one(&self.pool)
         .await?;

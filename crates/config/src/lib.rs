@@ -6,7 +6,7 @@ pub struct Config {
     pub port: String,
     pub host: String,
     pub db_url: String,
-    pub test_db_url:String
+    pub test_db_url: String,
 }
 
 pub fn load_config() -> Result<Config, Error> {
@@ -15,5 +15,10 @@ pub fn load_config() -> Result<Config, Error> {
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is missing");
     let test_db_url = env::var("TEST_DATABASE_URL").expect("TEST_DATABASE_URL is missing");
 
-    Ok(Config { port, host, db_url ,test_db_url})
+    Ok(Config {
+        port,
+        host,
+        db_url,
+        test_db_url,
+    })
 }
