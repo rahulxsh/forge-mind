@@ -17,7 +17,9 @@ use tracing::info;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt().init();
 
-    create_dir_all("./apps/api/uploads").await?;
+    let upload_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("uploads");
+
+    create_dir_all(&upload_dir).await?;
 
     let config: Config = load_config()?;
     info!("Config Loaded");

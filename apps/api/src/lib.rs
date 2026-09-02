@@ -17,6 +17,7 @@ pub mod repositories;
 pub mod response;
 pub mod routes;
 pub mod services;
+pub mod storage;
 pub mod workers;
 
 #[derive(Clone)]

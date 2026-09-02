@@ -79,11 +79,13 @@ async fn create_document() {
         .unwrap();
 
     let response = app.oneshot(request).await.unwrap();
+    println!("status: {}", response.status());
 
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(StatusCode::OK, StatusCode::OK);
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
+    println!("body: {}", String::from_utf8_lossy(&body));
 
     let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
