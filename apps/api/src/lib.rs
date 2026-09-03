@@ -4,6 +4,7 @@ use crate::routes::routes;
 use crate::services::documents::DocumentService;
 use axum::Router;
 use axum::routing::{get, post};
+use extractor::DataLabExtractor;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -24,6 +25,7 @@ pub mod workers;
 pub struct AppState {
     pub tx: mpsc::Sender<Job>,
     pub document_service: Arc<DocumentService>,
+    pub extractor: Arc<DataLabExtractor>,
 }
 
 pub fn create_app(state: AppState) -> Router {

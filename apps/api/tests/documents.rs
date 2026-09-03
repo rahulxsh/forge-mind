@@ -10,6 +10,7 @@ use api::{
 };
 
 use config::load_config;
+use extractor::DataLabExtractor;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -28,10 +29,17 @@ async fn test_pool() -> PgPool {
     pool
 }
 
+fn init_extractor() -> DataLabExtractor {
+    let config = load_config().unwrap();
+    let extractor = DataLabExtractor::new(config.datalab_api_key);
+    extractor
+}
+
 async fn test_app() -> (Router, JobChannel) {
     let pool = test_pool().await;
 
     let job_channel = JobChannel::new(2);
+    let extractor = init_extractor();
 
     let state = AppState {
         tx: job_channel.tx.clone(),
@@ -39,6 +47,7 @@ async fn test_app() -> (Router, JobChannel) {
             repository: DocumentsRepository { pool },
             tx: job_channel.tx.clone(),
         }),
+        extractor: Arc::new(extractor),
     };
 
     let app = create_app(state);

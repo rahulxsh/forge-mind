@@ -2,6 +2,7 @@ use crate::jobs::channel::Job;
 use crate::jobs::job::process_job;
 use crate::models::documents::DocumentStatus;
 use crate::repositories::documents::DocumentsRepository;
+use extractor::DataLabExtractor;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::select;
@@ -16,12 +17,14 @@ pub async fn create_worker_pool(
     pool_count: usize,
     rx: Arc<Mutex<mpsc::Receiver<Job>>>,
     token: CancellationToken,
+    extractor: Arc<DataLabExtractor>,
 ) -> JoinSet<()> {
     let mut set = JoinSet::new();
     for worker_id in 0..pool_count {
         let receiver = Arc::clone(&rx);
         let toke_c = token.clone();
         let repo = repository.clone();
+        let ext = Arc::clone(&extractor);
 
         set.spawn(async move {
             loop {
@@ -32,7 +35,7 @@ pub async fn create_worker_pool(
                     } => {
                         match job {
                             Some(j) => {
-                                tracing::info!(
+                                info!(
                                     worker_id,
                                     job_id = j.id.to_string(),
                                     "worker received job"
@@ -55,7 +58,7 @@ pub async fn create_worker_pool(
                                     }
                                 };
 
-                                let status = match process_job(PathBuf::from(document.path)).await {
+                                let status = match process_job(PathBuf::from(document.path),&ext).await {
                                     Ok(_) => DocumentStatus::Processed,
                                     Err(e) => {
                                         info!("Worker: Failed to process document: {}", e);

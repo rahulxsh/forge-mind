@@ -6,6 +6,7 @@ use api::services::documents::DocumentService;
 use api::workers::worker::create_worker_pool;
 use api::{AppState, create_app};
 use config::{Config, load_config};
+use extractor::DataLabExtractor;
 use std::sync::Arc;
 use tokio::fs::create_dir_all;
 use tokio::net::TcpListener;
@@ -24,6 +25,9 @@ async fn main() -> Result<()> {
     let config: Config = load_config()?;
     info!("Config Loaded");
 
+    //Init Extractor provider
+    let extractor = DataLabExtractor::new(config.datalab_api_key);
+
     let pool = connect_db(&config.db_url).await?;
 
     let token = CancellationToken::new();
@@ -38,8 +42,10 @@ async fn main() -> Result<()> {
             repository: DocumentsRepository { pool: pool.clone() },
             tx: job_channel.tx,
         }),
+        extractor: Arc::new(extractor),
     };
 
+    let datalab_extractor = state.extractor.clone();
     let app = create_app(state);
 
     let worker_pool_handle = tokio::spawn(async move {
@@ -49,6 +55,7 @@ async fn main() -> Result<()> {
             pool_count,
             Arc::new(Mutex::new(job_channel.rx)),
             token_cloned,
+            datalab_extractor,
         )
         .await;
 

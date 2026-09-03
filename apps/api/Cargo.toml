@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 config = { path = "../../crates/config"}
 database = { path = "../../crates/database"}
+extractor = { path = "../../crates/extractor"}
 
 axum = { version = "0.8.9", features = ["macros", "multipart"]}
 tokio = { version = "1.53.1", features = ["full"]}

@@ -1,8 +1,8 @@
 use crate::AppState;
 use crate::jobs::channel::Job;
 use axum::extract::State;
+use extractor::DataLabExtractor;
 use std::path::PathBuf;
-use tokio::time::sleep;
 use uuid::Uuid;
 
 pub async fn start_job(State(state): State<AppState>) -> Result<String, String> {
@@ -12,9 +12,11 @@ pub async fn start_job(State(state): State<AppState>) -> Result<String, String> 
     Ok("Accepted".into())
 }
 
-pub async fn process_job(path: PathBuf) -> Result<(), std::io::Error> {
-    let data = tokio::fs::read_to_string(path).await?;
+pub async fn process_job(
+    path: PathBuf,
+    extractor: &DataLabExtractor,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let data = extractor.extract(path).await?;
     println!("Data:{}", data);
-    sleep(std::time::Duration::from_secs(10)).await;
     Ok(())
 }
