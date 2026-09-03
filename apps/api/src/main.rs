@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
     let state = AppState {
         tx: job_channel.tx.clone(),
         document_service: Arc::new(DocumentService {
-            repository: DocumentsRepository { pool },
+            repository: DocumentsRepository { pool: pool.clone() },
             tx: job_channel.tx,
         }),
     };
@@ -43,7 +43,9 @@ async fn main() -> Result<()> {
     let app = create_app(state);
 
     let worker_pool_handle = tokio::spawn(async move {
+        let repo = DocumentsRepository { pool: pool.clone() };
         let mut set = create_worker_pool(
+            repo,
             pool_count,
             Arc::new(Mutex::new(job_channel.rx)),
             token_cloned,

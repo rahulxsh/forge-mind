@@ -27,14 +27,13 @@ impl DocumentService {
         let job = Job {
             id: document_dto.id,
         };
+        let doc = self.repository.create(document_dto).await?;
 
         self.tx.send(job).await.map_err(|e| AppError {
             message: e.to_string(),
             status_code: StatusCode::INTERNAL_SERVER_ERROR,
             errors: None,
         })?;
-
-        let doc = self.repository.create(document_dto).await?;
 
         let response_doc = DocumentResponse {
             id: doc.id,

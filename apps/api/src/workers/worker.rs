@@ -1,5 +1,8 @@
 use crate::jobs::channel::Job;
 use crate::jobs::job::process_job;
+use crate::models::documents::DocumentStatus;
+use crate::repositories::documents::DocumentsRepository;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::select;
 use tokio::sync::Mutex;
@@ -9,6 +12,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::info;
 
 pub async fn create_worker_pool(
+    repository: DocumentsRepository,
     pool_count: usize,
     rx: Arc<Mutex<mpsc::Receiver<Job>>>,
     token: CancellationToken,
@@ -17,6 +21,7 @@ pub async fn create_worker_pool(
     for worker_id in 0..pool_count {
         let receiver = Arc::clone(&rx);
         let toke_c = token.clone();
+        let repo = repository.clone();
 
         set.spawn(async move {
             loop {
@@ -33,7 +38,35 @@ pub async fn create_worker_pool(
                                     "worker received job"
                                 );
 
-                                process_job(j).await;
+                                if let Err(e) = repo.update_status(j.id,DocumentStatus::Processing).await {
+                                    info!("Failed to update document status: {}", e);
+                                    continue;
+                                }
+
+                                let document = match repo.get_by_id(j.id).await {
+                                    Ok(Some(document)) => document,
+                                    Ok(None) => {
+                                        info!("Document Not Found");
+                                        continue;
+                                    }
+                                    Err(e) => {
+                                        info!("Failed to get document:{}",e);
+                                        continue;
+                                    }
+                                };
+
+                                let status = match process_job(PathBuf::from(document.path)).await {
+                                    Ok(_) => DocumentStatus::Processed,
+                                    Err(e) => {
+                                        info!("Worker: Failed to process document: {}", e);
+                                        DocumentStatus::Failed
+                                    }
+                                };
+
+                                if let Err(e) = repo.update_status(j.id, status).await {
+                                    info!("Failed to update document status: {}", e);
+                                    continue;
+                                }
                              },
                              None => {
                                 info!("Worker {} shutting down", worker_id);

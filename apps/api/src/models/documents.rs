@@ -32,6 +32,7 @@ pub struct Document {
     pub file_name: String,
     pub content_type: String,
     pub status: DocumentStatus,
+    pub path: String,
 }
 
 #[derive(Debug, sqlx::Type)]
