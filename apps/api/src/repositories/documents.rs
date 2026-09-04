@@ -14,21 +14,23 @@ impl DocumentsRepository {
             Document,
             r#"
                 INSERT INTO documents
-                    (id, file_name, content_type, status, path)
+                    (id, file_name, content_type, status, path, attempts)
                 VALUES
-                    ($1, $2, $3, $4, $5)
+                    ($1, $2, $3, $4, $5, $6)
                 RETURNING
                     id,
                     file_name,
                     content_type,
                     status AS "status: DocumentStatus",
-                    path
+                    path,
+                    attempts
             "#,
             data.id,
             data.file_name,
             data.content_type,
             data.status as DocumentStatus,
-            data.path
+            data.path,
+            0
         )
         .fetch_one(&self.pool)
         .await?;
@@ -40,7 +42,7 @@ impl DocumentsRepository {
         let documents = sqlx::query_as!(
             Document,
             r#"
-                SELECT id, file_name, content_type, status AS "status:DocumentStatus", path
+                SELECT id, file_name, content_type, status AS "status:DocumentStatus", path, attempts
                 FROM documents
             "#
         )
@@ -54,7 +56,7 @@ impl DocumentsRepository {
         let document = sqlx::query_as!(
             Document,
             r#"
-                SELECT id, file_name, content_type, status AS "status:DocumentStatus", path
+                SELECT id, file_name, content_type, status AS "status:DocumentStatus", path, attempts
                 FROM documents
                 WHERE id = $1
             "#,
@@ -66,15 +68,25 @@ impl DocumentsRepository {
         Ok(document)
     }
 
-    pub async fn update_status(&self, id: Uuid, status: DocumentStatus) -> Result<(), sqlx::Error> {
+    pub async fn update_status(
+        &self,
+        id: Uuid,
+        status: DocumentStatus,
+        attempt: i32,
+        error: Option<String>,
+    ) -> Result<(), sqlx::Error> {
         info!(%id, ?status, "Updating document status");
         sqlx::query!(
             r#"
             UPDATE documents
-            SET status = $1
-            WHERE id = $2
+            SET status = $1,
+                attempts = $2,
+                last_error = $3
+            WHERE id = $4
             "#,
             status as DocumentStatus,
+            attempt,
+            error,
             id
         )
         .execute(&self.pool)

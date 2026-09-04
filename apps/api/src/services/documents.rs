@@ -1,3 +1,4 @@
+use crate::constants::MAX_PROCESS_JOB_ATTEMPTS;
 use crate::error::AppError;
 use crate::jobs::channel::Job;
 use crate::models::documents::{DocumentDTO, DocumentResponse, DocumentStatus};
@@ -26,6 +27,8 @@ impl DocumentService {
 
         let job = Job {
             id: document_dto.id,
+            attempts: 0,
+            max_attempts: MAX_PROCESS_JOB_ATTEMPTS,
         };
         let doc = self.repository.create(document_dto).await?;
 

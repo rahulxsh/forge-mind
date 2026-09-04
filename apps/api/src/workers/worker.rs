@@ -1,3 +1,4 @@
+use crate::constants::MAX_PROCESS_JOB_ATTEMPTS;
 use crate::jobs::channel::Job;
 use crate::jobs::job::process_job;
 use crate::models::documents::DocumentStatus;
@@ -18,6 +19,7 @@ pub async fn create_worker_pool(
     rx: Arc<Mutex<mpsc::Receiver<Job>>>,
     token: CancellationToken,
     extractor: Arc<DataLabExtractor>,
+    tx: mpsc::Sender<Job>,
 ) -> JoinSet<()> {
     let mut set = JoinSet::new();
     for worker_id in 0..pool_count {
@@ -25,6 +27,7 @@ pub async fn create_worker_pool(
         let toke_c = token.clone();
         let repo = repository.clone();
         let ext = Arc::clone(&extractor);
+        let sender = tx.clone();
 
         set.spawn(async move {
             loop {
@@ -34,14 +37,19 @@ pub async fn create_worker_pool(
                     rx.recv().await
                     } => {
                         match job {
-                            Some(j) => {
+                            Some(mut j) => {
                                 info!(
                                     worker_id,
                                     job_id = j.id.to_string(),
                                     "worker received job"
                                 );
 
-                                if let Err(e) = repo.update_status(j.id,DocumentStatus::Processing).await {
+                                if let Err(e) = repo.update_status(
+                                    j.id,
+                                    DocumentStatus::Processing,
+                                    j.attempts,
+                                    None
+                                ).await {
                                     info!("Failed to update document status: {}", e);
                                     continue;
                                 }
@@ -58,17 +66,46 @@ pub async fn create_worker_pool(
                                     }
                                 };
 
-                                let status = match process_job(PathBuf::from(document.path),&ext).await {
-                                    Ok(_) => DocumentStatus::Processed,
+                                j.attempts += 1;
+                                match process_job(PathBuf::from(document.path),&ext).await {
+                                    Ok(_) => {
+                                        repo.update_status(
+                                            j.id,
+                                            DocumentStatus::Processed,
+                                            j.attempts,
+                                            None
+                                        ).await.ok();
+                                    },
                                     Err(e) => {
-                                        info!("Worker: Failed to process document: {}", e);
-                                        DocumentStatus::Failed
-                                    }
-                                };
 
-                                if let Err(e) = repo.update_status(j.id, status).await {
-                                    info!("Failed to update document status: {}", e);
-                                    continue;
+                                        info!("Worker: Failed to process document: {}", e);
+
+                                        if j.attempts < MAX_PROCESS_JOB_ATTEMPTS {
+                                            if let Err(e) = repo.update_status(
+                                                j.id,
+                                                DocumentStatus::Queued,
+                                                j.attempts,
+                                                Some("Internal: Failed to update document status".into())
+                                            ).await {
+                                                 info!("Failed to update retry status: {}", e);
+                                                 continue;
+                                            }
+
+                                            // Put back job to queue
+                                            if let Err(e) = sender.send(j).await {
+                                                info!("Failed to requeue job:{}",e);
+                                            }
+                                        } else {
+                                            if let Err(e) = repo.update_status(
+                                                j.id,
+                                                DocumentStatus::Failed,
+                                                j.attempts,
+                                                Some("Internal: Failed to update document status".into())
+                                            ).await {
+                                                info!("Failed to update document status:{}",e);
+                                            }
+                                        }
+                                    }
                                 }
                              },
                              None => {

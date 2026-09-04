@@ -4,6 +4,8 @@ use uuid::Uuid;
 #[derive(Debug)]
 pub struct Job {
     pub id: Uuid,
+    pub attempts: i32,
+    pub max_attempts: i32,
 }
 
 pub struct JobChannel {
