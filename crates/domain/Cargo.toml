@@ -1,0 +1,13 @@
+[package]
+name = "domain"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+validator = { version = "0.21.0", features = ["derive"]}
+sqlx = { version = "0.9.0", features = ["postgres"]}
+async-trait = "0.1.92"
+anyhow = "1.0.104"
+serde = { version = "1.0.229", features = ["derive"]}
+uuid = { version = "1.24.1", features = ["v4","serde"]}
+reqwest = "0.13.4"

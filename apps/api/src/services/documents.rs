@@ -1,13 +1,14 @@
 use crate::constants::MAX_PROCESS_JOB_ATTEMPTS;
 use crate::error::AppError;
 use crate::jobs::channel::Job;
-use crate::models::documents::{DocumentDTO, DocumentResponse, DocumentStatus};
+use domain::documents::DocumentStatus;
 use crate::repositories::documents::DocumentsRepository;
 use crate::storage::local::store_multipart_file;
 use axum::extract::Multipart;
 use axum::http::StatusCode;
 use tokio::sync::mpsc;
 use uuid::Uuid;
+use crate::models::documents::{DocumentDTO,DocumentResponse};
 
 pub struct DocumentService {
     pub repository: DocumentsRepository,

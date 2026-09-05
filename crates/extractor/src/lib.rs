@@ -1,24 +1,14 @@
 use reqwest::Client;
 use reqwest::multipart::{Form, Part};
-use serde::Deserialize;
 use std::path::PathBuf;
 use std::time::Duration;
+use domain::datalab::{ResponseData,ResponsePoolData};
 
 pub struct DataLabExtractor {
     client: Client,
     api_key: String,
 }
 
-#[derive(Deserialize, Debug)]
-struct ResponseData {
-    request_id: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct ResponsePoolData {
-    status: String,
-    markdown: Option<String>,
-}
 impl DataLabExtractor {
     pub fn new(api_key: String) -> Self {
         Self {

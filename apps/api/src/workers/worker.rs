@@ -1,7 +1,7 @@
 use crate::constants::MAX_PROCESS_JOB_ATTEMPTS;
 use crate::jobs::channel::Job;
 use crate::jobs::job::process_job;
-use crate::models::documents::DocumentStatus;
+use domain::documents::DocumentStatus;
 use crate::repositories::documents::DocumentsRepository;
 use extractor::DataLabExtractor;
 use std::path::PathBuf;

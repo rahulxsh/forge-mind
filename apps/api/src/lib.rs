@@ -13,13 +13,13 @@ pub mod db;
 pub mod error;
 pub mod handlers;
 pub mod jobs;
-pub mod models;
 pub mod repositories;
 pub mod response;
 pub mod routes;
 pub mod services;
 pub mod storage;
 pub mod workers;
+pub mod models;
 
 #[derive(Clone)]
 pub struct AppState {

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+domain={ path = "../domain"}
 reqwest = { version = "0.13.4", features = ["multipart", "json", "stream"] }
 tokio = { version = "1", features = ["fs"] }
 serde = { version = "1", features = ["derive"] }

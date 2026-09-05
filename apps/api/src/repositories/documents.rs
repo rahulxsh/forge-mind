@@ -1,7 +1,8 @@
-use crate::models::documents::{Document, DocumentDTO, DocumentStatus};
+use domain::documents::{Document, DocumentStatus};
 use sqlx::PgPool;
 use tracing::info;
 use uuid::Uuid;
+use crate::models::documents::DocumentDTO;
 
 #[derive(Clone)]
 pub struct DocumentsRepository {

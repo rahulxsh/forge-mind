@@ -4,7 +4,8 @@ members = [
     "apps/api",
     "crates/config",
     "crates/database",
-    "crates/extractor"
+    "crates/extractor",
+    "crates/domain"
 ]
 
 resolver = "3"
